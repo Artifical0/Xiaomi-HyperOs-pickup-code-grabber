@@ -1,8 +1,11 @@
 name: Build APK
 
 # 触发：推送 v* 标签 或 手动运行
-# 职责：构建验证 + 产出（debug 签名）测试 APK 供下载体验；
-#       正式分发 APK 由维护者用生产 keystore 签名后经标准发布流程挂载（见 docs/RELEASE-PROCESS.md）
+# 职责：
+#   1) 仓库配置了签名 Secrets 时 → 构建**已签名 Release APK**（可直接安装/分发）；
+#   2) 未配置时 → 自动退化为只构建 debug 测试包（原行为）。
+# 签名密钥来源：仓库 Secrets（KEYSTORE_BASE64 / KEYSTORE_PASSWORD / KEY_ALIAS），
+# 仓库内不保存任何密钥文件。
 on:
   push:
     tags:
@@ -40,14 +43,60 @@ jobs:
       - name: 安装编译所需 SDK 组件
         run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
-      - name: 构建 APK
+      # ---------- 签名密钥（可选）----------
+      # 用 env 承接 secret 再判断，避免在 if 表达式里直接引用 secrets。
+      # 未配置 KEYSTORE_BASE64 时 path 留空，后续签名相关步骤自动跳过。
+      - name: 解码签名密钥
+        id: keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "path=" >> "$GITHUB_OUTPUT"
+            echo "::notice::未配置 KEYSTORE_BASE64，本次只构建 debug 测试包"
+            exit 0
+          fi
+          set -e
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          chmod 600 "$RUNNER_TEMP/release.keystore"
+          echo "path=$RUNNER_TEMP/release.keystore" >> "$GITHUB_OUTPUT"
+          echo "::notice::签名密钥已解码（$(wc -c < "$RUNNER_TEMP/release.keystore") 字节）"
+
+      - name: 构建已签名 Release APK
+        if: ${{ steps.keystore.outputs.path != '' }}
+        env:
+          # 用 ORG_GRADLE_PROJECT_* 传参：Gradle 会映射为同名项目属性，
+          # 密码不进命令行、也不会出现在构建日志里。
+          ORG_GRADLE_PROJECT_PICKUP_KEYSTORE: ${{ steps.keystore.outputs.path }}
+          ORG_GRADLE_PROJECT_PICKUP_KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_PICKUP_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: ./gradlew assembleRelease
+
+      - name: 校验 Release APK 签名
+        if: ${{ steps.keystore.outputs.path != '' }}
+        run: |
+          set -e
+          APK=app/build/outputs/apk/release/app-release.apk
+          ls -l "$APK"
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | tail -1 || true)
+          if [ -n "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --print-certs "$APK"
+          else
+            echo "::warning::未找到 apksigner，跳过签名校验"
+          fi
+
+      - name: 构建 debug 测试包
         run: ./gradlew assembleDebug
 
-      - name: 重命名产物
-        run: mv app/build/outputs/apk/debug/app-debug.apk pickup-code-grabber-debug.apk
+      - name: 上传签名 Release APK
+        if: ${{ steps.keystore.outputs.path != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pickup-code-grabber-release
+          path: app/build/outputs/apk/release/app-release.apk
 
-      - name: 上传构建产物（仅测试用）
+      - name: 上传 debug 测试包
         uses: actions/upload-artifact@v4
         with:
           name: pickup-code-grabber-debug
-          path: pickup-code-grabber-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
