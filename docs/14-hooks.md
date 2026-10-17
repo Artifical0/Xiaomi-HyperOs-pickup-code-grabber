@@ -37,7 +37,7 @@ S8 截获 ContentValues(body/address/date)
 `system`（框架） + `com.android.phone` + `com.android.providers.telephony`（短信库 Provider，与 phone 共用 uid 1001）+ `com.android.mms`（短信 App）+ `com.miui.notes`（小米待办）+ `com.coloros.note`（ColorOS 便签，预留）。
 
 > 注：ColorOS 的待办写入走「`su -M sqlite3` 直写日历库」，不需要 hook `com.coloros.calendar`，因此作用域无需勾选日历。
-> 另：`com.android.phone` 与 `com.android.providers.telephony` 同为 **uid 1001**，KernelSU/Magisk 的 root 授权按 uid 记，给其中一个授权即对两者生效，无需重复授权。
+> 另：`com.android.phone` 与 `com.android.providers.telephony` 同为 **uid 1001**。Magisk 的 root 授权按 uid 记，给其中一个授权即对两者生效；**KernelSU 内核直接禁止 uid < 2000（system 1000 除外）获取 su**，这两个进程在 KSU 上无法授权，「冻结免疫直写」开不了——ColorOS 上改由 system_server 放行冻结模块的 Provider 唤醒（`ColorOsProviderWake`，需勾选「系统框架」作用域）。
 
 ## 四、关键运行前提
 

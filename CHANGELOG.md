@@ -2,6 +2,14 @@
 
 > 完整开发历程见 [docs/HISTORY.md](docs/HISTORY.md)。
 
+## [3.1.1-wake.1] - 2026-10-17 · fork：合并 ColorOS 冻结唤醒修复
+
+- **ColorOS 冻结后漏码**：模块被划掉后，短信进程唤醒模块 Provider 得到 "Unknown authority"。
+  system_server 内 Hook `ContentProviderHelperExtImpl` 的 4 道拦截（启动/Hans/预加载），
+  仅对「目标是本模块 + 调用方是 system/phone」放行。KernelSU 上不需要给 uid 1001 授权 root。
+  需勾选「系统框架」作用域并重启；日志 `WAKE OK: N provider gate(s) hooked`。
+- 通知通道 `NotiRelay.relayHit` 也改为先走 Provider call（可唤醒），失败再回落广播。
+
 ## [3.1.1] - 2026-10-17 · 修正 ColorOS 上的 Hook 点类名（S1 / S5，新增 S9–S11）
 
 > 起因：ColorOS 16 上真实取件短信出现「解析成功、去重表也写入了，但待办里没有」。
