@@ -1093,7 +1093,7 @@ public class LauncherActivity extends Activity {
             try {
                 Diagnostics.suExecPublic("mkdir -p " + Repair.TARGET_DIR + "; "
                         + "echo " + (target ? "1" : "0") + " > " + flag + "; "
-                        + "chmod 644 " + flag, 15);
+                        + "chmod 644 " + flag + ProcessSync.readableConfigCommand(flag), 15);
             } catch (Throwable ignored) { }
             runOnUiThread(() -> {
                 btn.setText(target ? "已开启" : "已关闭");
@@ -1132,7 +1132,7 @@ public class LauncherActivity extends Activity {
             try {
                 Diagnostics.suExecPublic("mkdir -p " + Repair.TARGET_DIR + "; "
                         + "echo " + (on ? "1" : "0") + " > " + flag + "; "
-                        + "chmod 644 " + flag, 15);
+                        + "chmod 644 " + flag + ProcessSync.readableConfigCommand(flag), 15);
             } catch (Throwable ignored) { }
         }).start();
     }

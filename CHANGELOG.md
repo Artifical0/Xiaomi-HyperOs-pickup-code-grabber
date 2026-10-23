@@ -2,6 +2,13 @@
 
 > 完整开发历程见 [docs/HISTORY.md](docs/HISTORY.md)。
 
+## [3.1.2-noti.1] · 通知配置可读性修复
+
+- 配置文件写入和原子替换后设置 system_data_file 标签，避免 system_server 缺少 shell_data_file 的 open 权限；不改变 SQLite 可执行文件标签。
+- 补充抖音通知白名单；每 30 秒检查配置快照变化并刷新通知规则及包名。
+- 移除通知参数数量硬编码，记录处理异常；版本号提升至 313。
+- 尚需升级后重启验证真实通知到待办的完整链路。
+
 ## [3.1.1-wake.1] - 2026-10-17 · fork：合并 ColorOS 冻结唤醒修复
 
 - **ColorOS 冻结后漏码**：模块被划掉后，短信进程唤醒模块 Provider 得到 "Unknown authority"。
