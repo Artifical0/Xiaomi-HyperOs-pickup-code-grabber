@@ -31,7 +31,10 @@ public class SmsEventReceiver extends BroadcastReceiver {
         String sender = intent.getStringExtra("sender");
         String body = intent.getStringExtra("body");
         long ts = intent.getLongExtra("ts", System.currentTimeMillis());
-        boolean miss = intent.getBooleanExtra("miss", false);
+        // v3.1.2-noti.2 and older sent Integer(1), while the receiver expected Boolean.
+        Object rawMiss = intent.getExtras() == null ? null : intent.getExtras().get("miss");
+        boolean miss = Boolean.TRUE.equals(rawMiss)
+                || (rawMiss instanceof Number && ((Number) rawMiss).intValue() == 1);
         Log.i(TAG, "EVENT: sender=" + sender + " ts=" + ts + " body=" + (body == null ? "" : body.substring(0, Math.min(body.length(), 120))));
 
         if (body == null || body.trim().isEmpty()) return;

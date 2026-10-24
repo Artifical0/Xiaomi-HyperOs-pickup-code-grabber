@@ -117,6 +117,7 @@ public class NotiHook {
             String notiSender = "通知:" + pkg;
             if (!PickupExtractor.hasFeatureWords(notiSender, text)) return;
 
+            if (!NotiEventWindow.accept(pkg, text, android.os.SystemClock.elapsedRealtime())) return;
             List<String> codes = PickupExtractor.extract(notiSender, text);
             if (codes.isEmpty()) {
                 // 漏抓嫌疑：错题本（system_server 无 Context 写 prefs → 经广播转发给模块 App 记录）
@@ -177,19 +178,8 @@ public class NotiHook {
         return null;
     }
 
-    /** 拼合通知全部可见文本（title + text + bigText + extras） */
+    /** Extract only documented visible text fields, not arbitrary/private extras. */
     private static String buildText(Notification n) {
-        StringBuilder sb = new StringBuilder();
-        try {
-            Bundle extras = n.extras;
-            if (extras == null) return null;
-            CharSequence title = extras.getCharSequence(Notification.EXTRA_TITLE);
-            CharSequence text = extras.getCharSequence(Notification.EXTRA_TEXT);
-            CharSequence big = extras.getCharSequence(Notification.EXTRA_BIG_TEXT);
-            if (title != null) sb.append(title).append(" ");
-            if (text != null) sb.append(text).append(" ");
-            if (big != null) sb.append(big);
-        } catch (Throwable ignored) { }
-        return sb.toString().trim();
+        return NotificationText.build(n);
     }
 }
